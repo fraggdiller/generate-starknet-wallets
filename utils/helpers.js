@@ -25,12 +25,13 @@ export const checkBalance = async (rpc, walletAddress, tokenAddress, abiAddress)
 
 const randomDelay = () => {
     const seconds = Math.random() * (General.delay[1] - General.delay[0]) + General.delay[0];
-    console.log(`Delaying ${seconds} seconds`)
+    console.log(`Delaying ${seconds} seconds`);
     return Math.round(seconds * 1000);
 };
 
-export const sleep = (milliseconds) => {
-    if (typeof milliseconds === 'number' && !isNaN(milliseconds)) {
+export const sleep = (seconds) => {
+    if (typeof seconds === 'number' && !isNaN(seconds)) {
+        const milliseconds = seconds * 1000; // Преобразуем секунды в миллисекунды
         return new Promise((resolve) => setTimeout(resolve, milliseconds));
     } else {
         const randomMilliseconds = randomDelay();
