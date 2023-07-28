@@ -65,14 +65,14 @@ export class FeeGetter {
             if (feeInfo) {
                 return feeInfo.withdraw.fee;
             } else {
-                console.error(`Failed to get withdrawal commission for ${this.withdrawOptions.symbolWithdraw} in ${this.withdrawOptions.network} network.`);
+                console.error(`Failed to get withdrawal fees for ${this.withdrawOptions.symbolWithdraw} in ${this.withdrawOptions.network} network.`);
                 const withdrawFee = Math.random() * (OKXWithdrawOptions.withdraw_fee[1] - OKXWithdrawOptions.withdraw_fee[0]) + OKXWithdrawOptions.withdraw_fee[0];
-                console.error(`Using default withdrawal commissions - ${withdrawFee.toFixed(4)} ${this.withdrawOptions.symbolWithdraw} in ${this.withdrawOptions.network} network.`);
+                console.error(`Using default withdrawal fees - ${withdrawFee.toFixed(4)} ${this.withdrawOptions.symbolWithdraw} in ${this.withdrawOptions.network} network.`);
                 return withdrawFee;
             }
         } catch (error) {
-            console.error("An error to get withdrawal commissions:", error.message);
-            throw error;
+            console.error("An error to get withdrawal fees:");
+            ErrorHandler.handleCcxtError(error);
         }
     }
 }

@@ -1,6 +1,5 @@
 // helpers.js
-import Web3 from "web3";
-import { Contract, hash, RpcProvider, stark, uint256 } from "starknet";
+import { Contract, hash, RpcProvider, stark } from "starknet";
 import fs from "fs";
 import { General, OKXWithdrawOptions } from "../config.js"
 import { AppInitializer } from "./OkxWithdraw.js";
@@ -8,7 +7,6 @@ import { network, symbolWithdraw } from "./constants.js";
 import { DeployWallet } from "./DeployWallet.js";
 
 export const checkBalance = async (rpc, walletAddress, tokenAddress, abiAddress) => {
-    const w3 = new Web3();
     const provider = new RpcProvider({ nodeUrl: rpc });
 
     if (!abiAddress) {
@@ -22,7 +20,7 @@ export const checkBalance = async (rpc, walletAddress, tokenAddress, abiAddress)
 
     const contract = new Contract(abi, tokenAddress, provider);
     const balance = await contract.functions.balanceOf(walletAddress);
-    return w3.utils.hexToNumberString(uint256.bnToUint256(balance[0].low).low);
+    return balance[0].low;
 };
 
 const randomDelay = () => {
@@ -31,9 +29,13 @@ const randomDelay = () => {
     return Math.round(seconds * 1000);
 };
 
-export const sleep = () => {
-    const milliseconds = randomDelay()
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+export const sleep = (milliseconds) => {
+    if (typeof milliseconds === 'number' && !isNaN(milliseconds)) {
+        return new Promise((resolve) => setTimeout(resolve, milliseconds));
+    } else {
+        const randomMilliseconds = randomDelay();
+        return new Promise((resolve) => setTimeout(resolve, randomMilliseconds));
+    }
 };
 
 export const build_ConstructorCallData = async (argentXaccountClassHash, publicKey) => {
