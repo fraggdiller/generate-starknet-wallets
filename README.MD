@@ -12,7 +12,6 @@ For the code to work, you need to install the following dependencies:
 - ethers - 5.5.1
 - lodash - 4.17.21
 - starknet - 4.22.0
-- web3 - 4.0.3
 
 You can install it using:
 ```
@@ -21,7 +20,7 @@ npm i
 
 or
 ```
-npm i ccxt@4.0.39 debug@4.3.4 ethers@5.5.1 lodash@4.17.21 starknet@4.22.0 web3@4.0.3
+npm i ccxt@4.0.39 debug@4.3.4 ethers@5.5.1 lodash@4.17.21 starknet@4.22.0
 ```
 
 ## Wallet generator
