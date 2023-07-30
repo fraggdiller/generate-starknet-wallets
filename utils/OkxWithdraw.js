@@ -103,7 +103,7 @@ class OkxWithdraw {
                 network: this.withdrawOptions.network
             });
             console.log(`[OKX] Withdrew out ${this.amount} ${this.withdrawOptions.symbolWithdraw} to ${address}`);
-            console.log(`[OKX} Start waiting for deposit.`)
+            console.log(`[OKX] Start waiting for deposit.`)
             await BalanceUpdater.updateBalance(address);
 
         } catch (error) {
