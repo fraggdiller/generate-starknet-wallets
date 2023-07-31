@@ -10,10 +10,10 @@ export class General {
 
 export class OKXAuth {
     static use_okx_proxy = true;  // use proxy | true || false |
-    static okx_proxy = 'http://puWPCT:4c8Pms@45.133.210.201:8000';  // proxy url | http://login:password@ip:port |
-    static okx_apiKey = 'e7f1b1d0-6d6f-4825-94dd-4ceabb3240ac';
-    static okx_apiSecret = 'FDF9D47EC9ADF86073F8557C5FBC1E51';
-    static okx_apiPassword = '123321Aa@';
+    static okx_proxy = '';  // proxy url | http://login:password@ip:port |
+    static okx_apiKey = '';
+    static okx_apiSecret = '';
+    static okx_apiPassword = '';
 }
 
 export class OKXWithdrawOptions {
