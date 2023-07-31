@@ -1,15 +1,16 @@
-// WalletGenerator.js
+// ArgentWalletGenerator.js
 import { ec, encode } from "starknet";
-import { getStarkPair } from "./keyDerivation.js";
-import { MnemonicGenerator } from "./MnemonicGenerator.js";
+import { getStarkPair } from "./argentkeyDerivation.js";
+import { MnemonicGenerator } from "../MnemonicGenerator.js";
 import { ethers } from "ethers";
-import { build_ConstructorCallData, calculateAddress } from "./helpers.js";
+import {build_ConstructorCallData, calculateArgentAddress} from "../helpers.js";
+import {baseDerivationPath} from "../constants.js";
 
 const { sanitizeBytes, addHexPrefix } = encode;
 
 
-export class WalletGenerator {
-    static async getWalletData(baseDerivationPath, argentXproxyClassHash, argentXaccountClassHash) {
+export class ArgentWalletGenerator {
+    static async getWalletData() {
         const mnemonic = await MnemonicGenerator.generateMnemonicPhrase();
         const ethersWallet = ethers.Wallet.fromMnemonic(mnemonic);
         const index = 0;
@@ -18,9 +19,9 @@ export class WalletGenerator {
         const publicKey = ec.getStarkKey(starkPair);
         const privateKey = addHexPrefix(sanitizeBytes(starkPair.getPrivate("hex")));
 
-        const ConstructorCallData = await build_ConstructorCallData(argentXaccountClassHash, publicKey);
+        const ConstructorCallData = await build_ConstructorCallData(publicKey);
 
-        const address = await calculateAddress(publicKey, argentXproxyClassHash, ConstructorCallData)
+        const address = await calculateArgentAddress(publicKey, ConstructorCallData);
 
         return {
             seed: mnemonic,

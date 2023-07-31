@@ -1,18 +1,19 @@
 export class General {
+    static wallet = 'braavos'; // 'braavos' | 'argent'
     static generate = false;  // generate wallets | true || false |
     static deploy = true;  // deploy wallets  | true || false |
 
-    static numWallets = 1000;  // number of wallets to generate | 1 || n
+    static numWallets = 10;  // number of wallets to generate | 1 || n
     static delay = [1, 5];  // delay in seconds between deploying wallets | 1 || n |
     static num_deployers = 5;  // how many wallets will deploy at the same time
 }
 
 export class OKXAuth {
     static use_okx_proxy = true;  // use proxy | true || false |
-    static okx_proxy = '';  // proxy url | http://login:password@ip:port |
-    static okx_apiKey = '';
-    static okx_apiSecret = '';
-    static okx_apiPassword = '';
+    static okx_proxy = 'http://puWPCT:4c8Pms@45.133.210.201:8000';  // proxy url | http://login:password@ip:port |
+    static okx_apiKey = 'e7f1b1d0-6d6f-4825-94dd-4ceabb3240ac';
+    static okx_apiSecret = 'FDF9D47EC9ADF86073F8557C5FBC1E51';
+    static okx_apiPassword = '123321Aa@';
 }
 
 export class OKXWithdrawOptions {

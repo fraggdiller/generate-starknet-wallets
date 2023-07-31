@@ -1,4 +1,4 @@
-// keyDerivation.js
+// argentkeyDerivation.js
 import { BigNumber, utils } from "ethers";
 import { ec, number } from "starknet";
 import pkg from 'lodash';
@@ -15,12 +15,12 @@ export const getStarkPair = (indexOrPath, secret, baseDerivationPath) => {
     const childNode = masterNode.derivePath(path);
     const groundKey = grindKey(childNode.privateKey);
     return ec.getKeyPair(groundKey);
-}
+};
 
 
 const getPathForIndex = (index, baseDerivationPath) => {
     return `${baseDerivationPath}/${index}`;
-}
+};
 
 
 const grindKey = (keySeed) => {
@@ -44,11 +44,11 @@ const grindKey = (keySeed) => {
     } while (!key.lt(maxAllowedVal));
 
     return "0x" + key.umod(keyValueLimit).toString("hex");
-}
+};
 
 
 const hashKeyWithIndex = (key, index) => {
     const payload = utils.concat([utils.arrayify(key), utils.arrayify(index)]);
     const hash = utils.sha256(payload);
     return number.toBN(hash);
-}
+};

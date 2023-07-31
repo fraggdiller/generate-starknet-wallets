@@ -1,9 +1,9 @@
-// DeployWallet.js
+// argentDeployWallet.js
 import { Account, Provider, ec } from "starknet";
-import { argentXaccountClassHash, starkscan, argentXproxyClassHash, retries, status } from "./constants.js";
-import { build_ConstructorCallData, build_deployAccountPayload } from "./helpers.js";
+import { starkscan, retries, status } from "../constants.js";
+import { build_ConstructorCallData, build_deployAccountPayload } from "../helpers.js";
 
-export class DeployWallet {
+export class ArgentDeployWallet {
     constructor(address, privateKey, publicKey) {
         this.address = address;
         this.privateKey = privateKey;
@@ -14,8 +14,8 @@ export class DeployWallet {
     }
 
     async deployWallet() {
-        const ConstructorCallData = await build_ConstructorCallData(argentXaccountClassHash, this.publicKey);
-        const deployAccountPayload = await build_deployAccountPayload(argentXproxyClassHash, ConstructorCallData, this.address, this.publicKey);
+        const ConstructorCallData = await build_ConstructorCallData(this.publicKey);
+        const deployAccountPayload = await build_deployAccountPayload(ConstructorCallData, this.address, this.publicKey);
         try {
 
             const {

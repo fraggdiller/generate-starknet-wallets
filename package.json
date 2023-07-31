@@ -8,8 +8,7 @@
     "debug": "^4.3.4",
     "ethers": "^5.5.1",
     "lodash": "^4.17.21",
-    "starknet": "^4.22.0",
-    "web3": "^4.0.3"
+    "starknet": "^4.22.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

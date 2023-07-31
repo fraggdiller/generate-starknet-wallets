@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 export class WalletSaver {
-    static saveDataToFiles(walletsData, dataFolderPath) {
+    static saveDataToFiles(walletsData, dataFolderPath, prefix) {
         const csvData = walletsData.map(data => `${data.seed},${data.address},${data.privateKey},${data.publicKey}`).join("\n");
         const seedsData = walletsData.map(data => data.seed).join("\n");
         const addressesData = walletsData.map(data => data.address).join("\n");
@@ -14,12 +14,12 @@ export class WalletSaver {
             fs.mkdirSync(dataFolderPath);
         }
 
-        fs.writeFileSync(path.join(dataFolderPath, "wallets.csv"), "Seed,Address,Private Key,Public Key\n" + csvData);
-        fs.writeFileSync(path.join(dataFolderPath, "seeds.txt"), seedsData);
-        fs.writeFileSync(path.join(dataFolderPath, "addresses.txt"), addressesData);
-        fs.writeFileSync(path.join(dataFolderPath, "private_keys.txt"), privateKeysData);
-        fs.writeFileSync(path.join(dataFolderPath, "public_keys.txt"), publicKeysData);
+        fs.writeFileSync(path.join(dataFolderPath, `${prefix}_wallets.csv`), "Seed,Address,Private Key,Public Key\n" + csvData);
+        fs.writeFileSync(path.join(dataFolderPath, `${prefix}_seeds.txt`), seedsData);
+        fs.writeFileSync(path.join(dataFolderPath, `${prefix}_addresses.txt`), addressesData);
+        fs.writeFileSync(path.join(dataFolderPath, `${prefix}_private_keys.txt`), privateKeysData);
+        fs.writeFileSync(path.join(dataFolderPath, `${prefix}_public_keys.txt`), publicKeysData);
 
-        console.log("Wallets generated and saved to files successfully.");
+        console.log(`Wallets generated and saved to files with prefix "${prefix}" successfully.`);
     }
 }
