@@ -349,6 +349,7 @@ export const deployArgentWallets = async (addresses, privateKeys, publicKeys, co
         const appInitializer = new AppInitializer(OKXWithdrawOptions, symbolWithdraw, network, address);
         await sleep();
         await appInitializer.run();
+        await sleep();
         const deployWallet = new ArgentDeployWallet(address, privateKey, publicKey);
         return await deployWallet.deployWallet();
     };
