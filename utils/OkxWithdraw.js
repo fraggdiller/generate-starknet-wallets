@@ -59,6 +59,14 @@ export class FeeGetter {
 
     async getWithdrawFee() {
         try {
+            const networkInfo = await this.exchange.fetchCurrencies();
+            const canWd = networkInfo[this.withdrawOptions.symbolWithdraw].networks[this.withdrawOptions.network].info.canWd;
+
+            if (!canWd) {
+                console.log(`Withdraw from OKX in ${this.withdrawOptions.network} network is disabled now`)
+                process.exit(0);
+            }
+
             const fees = await this.exchange.fetchDepositWithdrawFees([this.withdrawOptions.symbolWithdraw]);
             const feeInfo = fees[this.withdrawOptions.symbolWithdraw]?.networks?.[this.withdrawOptions.network];
 
