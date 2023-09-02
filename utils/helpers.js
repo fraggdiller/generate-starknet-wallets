@@ -1,307 +1,35 @@
-// helpers.js
-import fs from "fs";
-import { constants, Contract, ec, hash, RpcProvider, stark } from "starknet";
-import { General, OKXWithdrawOptions } from "../config.js"
-import { AppInitializer } from "./OkxWithdraw.js";
-import { ArgentDeployWallet } from "./argent/argentDeployWallet.js";
-import { BraavosDeployWallet } from "./braavos/braavosDeployWallet.js";
-import { getBraavosStarkPair } from "./braavos/braavoskeyDerivation.js";
-
+import { HDKey } from '@scure/bip32';
+import { mnemonicToSeedSync } from '@scure/bip39';
+import { HDNodeWallet, Mnemonic } from 'ethers';
+import { Account, CallData, constants, Contract, ec, hash, num, Provider, stark } from 'starknet';
+import { abi } from './abi.js';
 import {
-    argentaddressesFilePath,
-    argentprivateKeysFilePath,
-    argentpublicKeysFilePath,
     argentXaccountClassHash,
     argentXproxyClassHash,
-    braavosaddressesFilePath,
-    braavosprivateKeysFilePath,
-    braavosmnemonicsFilePath,
+    baseDerivationPath,
     braavosAccountClassHash,
     braavosInitialClassHash,
-    braavosProxyClassHash,
-    index,
-    network,
-    parsedOtherSigner,
-    symbolWithdraw
-} from "./constants.js";
+    braavosProxyClassHash
+} from './constants.js';
+import { FromOkxToWallet } from './OkxWithdraw.js';
+import TxConfirmation from "./txConfirmation.js";
 
+export const getArgentPrivateKey = async (mnemonic) => {
+    const mnemo = Mnemonic.fromPhrase(mnemonic);
+    const signer = HDNodeWallet.fromMnemonic(mnemo);
+    const masterNode = HDNodeWallet.fromSeed(signer.privateKey);
+    const childNode = masterNode.derivePath(baseDerivationPath);
 
-
-export const checkBalance = async (rpc, walletAddress, tokenAddress, abiAddress) => {
-    const provider = new RpcProvider({ nodeUrl: rpc });
-
-    if (!abiAddress) {
-        abiAddress = tokenAddress;
-    }
-
-    const { abi: abi } = await provider.getClassAt(abiAddress);
-    if (abi === undefined) {
-        throw new Error("no abi.");
-    }
-
-    const contract = new Contract(abi, tokenAddress, provider);
-    const balance = await contract.functions.balanceOf(walletAddress);
-    return balance[0].low;
-};
-
-
-const randomDelay = () => {
-    const seconds = Math.random() * (General.delay[1] - General.delay[0]) + General.delay[0];
-    console.log(`Delaying ${seconds} seconds`);
-    return Math.round(seconds * 1000);
-};
-
-
-export const sleep = (seconds) => {
-    if (typeof seconds === 'number' && !isNaN(seconds)) {
-        const milliseconds = seconds * 1000;
-        return new Promise((resolve) => setTimeout(resolve, milliseconds));
-    } else {
-        const randomMilliseconds = randomDelay();
-        return new Promise((resolve) => setTimeout(resolve, randomMilliseconds));
-    }
-};
-
-
-export const loadArgentWallets = async () => {
-    try {
-        const addresses = fs.readFileSync(argentaddressesFilePath, "utf8")
-            .split("\n")
-            .map(row => row.trim())
-            .filter(row => row !== "");
-
-        const privateKeys = fs.readFileSync(argentprivateKeysFilePath, "utf-8")
-            .split("\n")
-            .map(row => row.trim())
-            .filter(row => row !== "");
-
-        const publicKeys = fs.readFileSync(argentpublicKeysFilePath, "utf-8")
-            .split("\n")
-            .map(row => row.trim())
-            .filter(row => row !== "");
-
-        return { addresses, privateKeys, publicKeys };
-    } catch (err) {
-        console.error(`Error while loading wallet data: ${err.message}`);
-        throw err;
-    }
-};
-
-
-export const loadBraavosWallets = async () => {
-    try {
-        const addresses = fs.readFileSync(braavosaddressesFilePath, "utf8")
-            .split("\n")
-            .map(row => row.trim())
-            .filter(row => row !== "");
-
-        const privateKeys = fs.readFileSync(braavosprivateKeysFilePath, "utf-8")
-            .split("\n")
-            .map(row => row.trim())
-            .filter(row => row !== "");
-
-        const mnemonics = fs.readFileSync(braavosmnemonicsFilePath, "utf-8")
-            .split("\n")
-            .map(row => row.trim())
-            .filter(row => row !== "");
-
-        return { addresses, privateKeys, mnemonics };
-    } catch (err) {
-        console.error(`Error while loading wallet data: ${err.message}`);
-        throw err;
-    }
-};
-
-
-export const computePkeys = (mnemonic) => {
-    const pair = getBraavosStarkPair(mnemonic, index);
-    const starkPair = pair.starkPair;
-    const publicKey = ec.getStarkKey(pair.starkPair);
-    const privateKey = pair.groundKey;
-    return { starkPair, publicKey, privateKey };
-};
-
-
-const calculateInitializer = (publicKey) => {
-    return stark.compileCalldata({ public_key: publicKey });
-};
-
-
-const build_proxyConstructor = (Initializer) => {
-    return stark.compileCalldata({
-        implementation_address: braavosInitialClassHash,
-        initializer_selector: hash.getSelectorFromName('initializer'),
-        calldata: [...Initializer],
-    });
-};
-
-
-const build_proxyConstructorCallData = (publicKey) => {
-    const Initializer = calculateInitializer(publicKey);
-    return build_proxyConstructor(Initializer);
-};
-
-
-const getSignature = (
-    address,
-    proxyConstructorCallData,
-    publicKey,
-    version,
-    max_fee,
-    chainId,
-    nonce,
-    mnemonic) => {
-    const txnHash = hash.calculateDeployAccountTransactionHash(
-        address,
-        braavosProxyClassHash,
-        proxyConstructorCallData,
-        publicKey,
-        version,
-        max_fee,
-        chainId,
-        nonce
-    );
-
-    const starkPair = computePkeys(mnemonic).starkPair;
-
-    const ecSign = ec.sign(
-        starkPair,
-        hash.computeHashOnElements([txnHash, braavosAccountClassHash, ...parsedOtherSigner]));
-
-    const r = ecSign[0];
-    const s = ecSign[1];
-
-    return [ r.toString(), s.toString(), braavosAccountClassHash.toString(), ...parsedOtherSigner.map((e) => e.toString()) ];
-};
-
-
-export const calculateBraavosAddress = (publicKey) => {
-    const ProxyConstructorCallData = build_proxyConstructorCallData(publicKey);
-
-    return hash.calculateContractAddressFromHash(
-        publicKey,
-        braavosProxyClassHash,
-        ProxyConstructorCallData,
-        0
-    );
-};
-
-
-const buildAccountDeployPayload = async (
-    privateKey,
-    mnemonic,
-    { classHash, addressSalt, constructorCalldata, contractAddress: providedContractAddress },
-    { nonce, chainId, version, maxFee }) => {
-    const compiledCalldata = stark.compileCalldata(constructorCalldata ?? []);
-    const publicKey = computePkeys(mnemonic).publicKey;
-    const contractAddress = providedContractAddress ?? calculateBraavosAddress(publicKey);
-    const signature = getSignature(
-        contractAddress,
-        compiledCalldata,
-        publicKey,
-        BigInt(version),
-        maxFee,
-        chainId,
-        BigInt(nonce),
-        mnemonic
-    );
-
-    return {
-        classHash,
-        addressSalt,
-        constructorCalldata: compiledCalldata,
-        signature,
-    };
-};
-
-
-export const estimateAccountDeployFee = async (privateKey, provider, mnemonic, { blockIdentifier, skipValidate } = {}) => {
-    const version = hash.feeTransactionVersion;
-    const nonce = constants.ZERO;
-    const chainId = await provider.getChainId();
-    const cairoVersion = '0';
-    const publicKey = computePkeys(mnemonic).publicKey;
-    const ProxyAddress = calculateBraavosAddress(publicKey);
-    const ProxyConstructorCallData = build_proxyConstructorCallData(publicKey);
-
-    const payload = await buildAccountDeployPayload(
-        privateKey,
-        mnemonic,
-        {
-            classHash: braavosProxyClassHash.toString(),
-            addressSalt: publicKey,
-            constructorCalldata: ProxyConstructorCallData,
-            contractAddress: ProxyAddress
-        },
-        {
-            nonce,
-            chainId,
-            version,
-            walletAddress: ProxyAddress,
-            maxFee: constants.ZERO,
-            cairoVersion
-        });
-
-    const response = await provider.getDeployAccountEstimateFee(
-        { ...payload },
-        { version, nonce },
-        blockIdentifier,
-        skipValidate
-    );
-    return stark.estimatedFeeToMaxFee(response.overall_fee);
-};
-
-
-export const deployAccount = async (privateKey, mnemonic, provider, max_fee) => {
-    const nonce = constants.ZERO;
-    const publicKey = computePkeys(mnemonic).publicKey;
-    const ProxyAddress = calculateBraavosAddress(publicKey);
-    const ProxyConstructorCallData = build_proxyConstructorCallData(publicKey);
-    max_fee ??= await estimateAccountDeployFee(privateKey, provider, mnemonic);
-    const version = hash.transactionVersion;
-
-    const signature = getSignature(
-        ProxyAddress,
-        ProxyConstructorCallData,
-        publicKey,
-        version,
-        max_fee,
-        await provider.getChainId(),
-        nonce,
-        mnemonic);
-
-    return provider.deployAccountContract(
-        {
-            classHash: braavosProxyClassHash.toString(),
-            addressSalt: publicKey,
-            constructorCalldata: ProxyConstructorCallData,
-            signature: signature,
-        },
-        {
-            nonce,
-            maxFee: max_fee,
-            version,
-        }
-    );
+    return '0x' + ec.starkCurve.grindKey(childNode.privateKey).toString();
 };
 
 
 export const build_ConstructorCallData = async (publicKey) => {
-    return stark.compileCalldata({
+    return CallData.compile({
         implementation: argentXaccountClassHash,
         selector: hash.getSelectorFromName("initialize"),
-        calldata: stark.compileCalldata({ signer: publicKey, guardian: "0" }),
+        calldata: CallData.compile({ signer: publicKey, guardian: "0" }),
     });
-};
-
-
-export const calculateArgentAddress = async (publicKey, ConstructorCallData) => {
-    return hash.calculateContractAddressFromHash(
-        publicKey,
-        argentXproxyClassHash,
-        ConstructorCallData,
-        0
-    );
 };
 
 
@@ -315,60 +43,321 @@ export const build_deployAccountPayload = async (ConstructorCallData, address, p
 };
 
 
-const deployWalletsBatch = async (addresses, privateKeys, deployFunction, concurrencyLimit) => {
-    const numWallets = addresses.length;
-    const results = [];
+export const getArgentAddress = async (privateKey) => {
+    const publicKey = ec.starkCurve.getStarkKey(privateKey);
+    const ConstructorCallData = await build_ConstructorCallData(publicKey);
 
-    async function deploySingleWallet(index) {
-        const address = addresses[index];
-        const privateKey = privateKeys[index];
-        return await deployFunction(address, privateKey);
-    }
-
-    for (let i = 0; i < numWallets; i += concurrencyLimit) {
-        const currentConcurrency = Math.min(concurrencyLimit, numWallets - i);
-        const walletPromises = [];
-        for (let j = 0; j < currentConcurrency; j++) {
-            walletPromises.push(deploySingleWallet(i + j));
-        }
-
-        const resultsSlice = await Promise.allSettled(walletPromises);
-        results.push(...resultsSlice.filter((result) => result.status === 'fulfilled').map((result) => result.value));
-
-        if (i + currentConcurrency < numWallets) {
-            await sleep(0.5);
-        }
-    }
-
-    return results;
+    return hash.calculateContractAddressFromHash(
+        publicKey,
+        argentXproxyClassHash,
+        ConstructorCallData,
+        0
+    );
 };
 
 
-export const deployArgentWallets = async (addresses, privateKeys, publicKeys, concurrencyLimit) => {
-    const deployFunction = async (address, privateKey) => {
-        const publicKey = publicKeys[addresses.indexOf(address)];
-        const appInitializer = new AppInitializer(OKXWithdrawOptions, symbolWithdraw, network, address);
-        await sleep();
-        await appInitializer.run();
-        await sleep();
-        const deployWallet = new ArgentDeployWallet(address, privateKey, publicKey);
-        return await deployWallet.deployWallet();
-    };
+export const getBraavosPrivateKey = async (mnemonic) => {
+    const seed = mnemonicToSeedSync(mnemonic);
+    const hdKey = HDKey.fromMasterSeed(seed);
+    const hdKeyDerived = hdKey.derive(baseDerivationPath);
 
-    return deployWalletsBatch(addresses, privateKeys, deployFunction, concurrencyLimit);
+    return "0x" + ec.starkCurve.grindKey(hdKeyDerived.privateKey);
 };
 
 
-export const deployBraavosWallets = async (addresses, privateKeys, mnemonics, concurrencyLimit) => {
-    const deployFunction = async (address, privateKey) => {
-        const mnemonic = mnemonics[addresses.indexOf(address)];
-        const appInitializer = new AppInitializer(OKXWithdrawOptions, symbolWithdraw, network, address);
-        await sleep();
-        await appInitializer.run();
-        await sleep();
-        const deployWallet = new BraavosDeployWallet(privateKey, mnemonic);
-        return await deployWallet.deployWallet();
-    };
+export const getBraavosAddress = async (privateKey) => {
+    const calculateInitializer = (publicKey) => {
+        return CallData.compile({ public_key: publicKey });
+    }
 
-    return deployWalletsBatch(addresses, privateKeys, deployFunction, concurrencyLimit);
+    const buildProxyConstructorCallData = (initializer) => {
+        return CallData.compile({
+            implementation_address: braavosInitialClassHash,
+            initializer_selector: hash.getSelectorFromName('initializer'),
+            calldata: [...initializer]
+        });
+    }
+
+    const publicKey = ec.starkCurve.getStarkKey(num.toHex(privateKey));
+    const initializer = calculateInitializer(publicKey);
+    const proxyConstructorCallData = buildProxyConstructorCallData(initializer);
+
+    return hash.calculateContractAddressFromHash(
+        publicKey,
+        braavosProxyClassHash,
+        proxyConstructorCallData,
+        0
+    );
+};
+
+
+
+export const getAddress = async (privateKey,walletName) => {
+    switch (walletName) {
+        case "argent":
+            return await getArgentAddress(privateKey);
+        case 'braavos':
+            return await getBraavosAddress(privateKey);
+
+    }
+}
+
+export const getPrivateKey = async (mnemonic,walletName) => {
+    switch (walletName) {
+        case "argent":
+            return await getArgentPrivateKey(mnemonic);
+        case 'braavos':
+            return await getBraavosPrivateKey(mnemonic);
+    }
+}
+
+export const checkDeploy = async (addres,privateKey) => {
+    try {
+        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } })
+        const account = new Account(provider,addres,privateKey)
+        const nonce = await account.getNonce();
+
+        if (Number(nonce) === 0){
+            return false
+        } else if (nonce > 0){
+            return true
+        }
+    } catch (e) {
+        return false;
+    }
+}
+
+
+export const checkBalance = async (address) => {
+    try {
+        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+
+        const contract = new Contract(abi, '0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', provider);
+
+        const balance = await contract.functions.balanceOf(address);
+
+        return balance.balance.low;
+    } catch (e) {
+        console.log(e);
+        throw new Error(e);
+    }
+};
+
+
+export const waitForUpdateBalance = async (address, balanceCash) => {
+    try {
+        while (true) {
+            await new Promise(resolve => setTimeout(resolve, 120 * 1000));
+            let balanceNew = await checkBalance(address);
+
+            if (balanceNew > balanceCash) {
+
+                console.log(`Deposit confirmed on wallet`);
+                return;
+            }
+            else {
+                console.log(`Deposit not confirmed on wallet yet, waiting 20sec...`);
+            }
+        }
+    } catch (e) {
+        console.log(e);
+        throw new Error(e);
+    }
+}
+
+
+export const setupDelay = async (delay) => {
+    try {
+        const [mindelay, maxdelay] = delay;
+        const delaySeconds =  Math.floor(Math.random() * (maxdelay - mindelay + 1)) + mindelay;
+        console.log(`Delaying ${delaySeconds} seconds before next action`);
+        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+    } catch (e) {
+        console.log(e);
+        throw new Error(e);
+    }
+};
+
+
+export const getSignature = async (
+    address,
+    proxyConstructorCallData,
+    publicKey,
+    version,
+    max_fee,
+    chainId,
+    nonce,
+    privateKey
+) => {
+    const txnHash = hash.calculateDeployAccountTransactionHash(
+        address,
+        braavosProxyClassHash,
+        proxyConstructorCallData,
+        publicKey,
+        version,
+        max_fee,
+        chainId,
+        nonce
+    );
+
+    const parsedOtherSigner = [0, 0, 0, 0, 0, 0, 0];
+    const { r, s } = ec.starkCurve.sign(
+        hash.computeHashOnElements([txnHash, braavosAccountClassHash, ...parsedOtherSigner]),
+        num.toHex(privateKey)
+    );
+    return [
+        r.toString(),
+        s.toString(),
+        braavosAccountClassHash.toString(),
+        ...parsedOtherSigner.map((e) => e.toString()),
+    ];
+}
+
+
+export const calculateInit = (starkKeyPubBraavos) =>
+    CallData.compile({ public_key: starkKeyPubBraavos });
+
+
+export const proxyConstructor = (BraavosInitializer) =>
+    CallData.compile({
+        implementation_address: braavosInitialClassHash,
+        initializer_selector: hash.getSelectorFromName('initializer'),
+        calldata: [...BraavosInitializer],
+    });
+
+
+export const buildAccountDeployPayload = async (
+    privateKey,
+    {
+        classHash,
+        addressSalt,
+        constructorCalldata,
+        contractAddress: providedContractAddress,
+    },
+    { nonce, chainId, version, maxFee }
+) => {
+    const compiledCalldata = CallData.compile(constructorCalldata ?? []);
+    const contractAddress = providedContractAddress ?? await getBraavosAddress(privateKey);
+    const publicKey = ec.starkCurve.getStarkKey(num.toHex(privateKey));
+
+    const signature = await getSignature(
+        contractAddress,
+        compiledCalldata,
+        publicKey,
+        BigInt(version),
+        maxFee,
+        chainId,
+        BigInt(nonce),
+        privateKey
+    );
+
+    return {
+        classHash,
+        addressSalt,
+        constructorCalldata: compiledCalldata,
+        signature,
+    };
+};
+
+
+export async function estimateAccountDeployFee(
+    privateKeyBraavos,
+    provider,
+    { blockIdentifier, skipValidate } = {}
+){
+    const version = hash.feeTransactionVersion;
+    const nonce = constants.ZERO;
+
+    const chainId = provider.provider.chainId.toString();
+
+    const cairoVersion = '0';
+    const starkKeyPubBraavos = ec.starkCurve.getStarkKey(num.toHex(privateKeyBraavos));
+    const BraavosProxyAddress = await getBraavosAddress(privateKeyBraavos);
+    const BraavosInitializer = await calculateInit(starkKeyPubBraavos);
+    const BraavosProxyConstructorCallData = await proxyConstructor(BraavosInitializer);
+
+    const payload = await buildAccountDeployPayload(
+        privateKeyBraavos,
+        {
+            classHash: braavosProxyClassHash.toString(),
+            addressSalt: starkKeyPubBraavos,
+            constructorCalldata: BraavosProxyConstructorCallData,
+            contractAddress: BraavosProxyAddress,
+        },
+        {
+            nonce,
+            chainId,
+            version,
+            walletAddress: BraavosProxyAddress,
+            maxFee: constants.ZERO,
+            cairoVersion,
+        }
+    );
+
+    const response = await provider.getDeployAccountEstimateFee(
+        { ...payload },
+        { version, nonce },
+        blockIdentifier,
+        skipValidate
+    );
+    return stark.estimatedFeeToMaxFee(response.overall_fee);
+}
+
+export async function deployBraavosAccount(
+    privateKeyBraavos,
+    provider,
+    max_fee
+){
+    const nonce = constants.ZERO;
+    const starkKeyPubBraavos = ec.starkCurve.getStarkKey(num.toHex(privateKeyBraavos));
+
+    const BraavosProxyAddress = await getBraavosAddress(privateKeyBraavos);
+    const BraavosInitializer = await calculateInit(starkKeyPubBraavos);
+    const BraavosProxyConstructorCallData = await proxyConstructor(BraavosInitializer);
+    max_fee ??= await estimateAccountDeployFee(privateKeyBraavos, provider);
+    const version = hash.transactionVersion;
+    const signatureBraavos = await getSignature(
+        BraavosProxyAddress,
+        BraavosProxyConstructorCallData,
+        starkKeyPubBraavos,
+        version,
+        max_fee,
+        await provider.getChainId(),
+        nonce,
+        privateKeyBraavos
+    );
+    const txPayload = {
+        classHash: braavosProxyClassHash.toString(),
+        addressSalt: starkKeyPubBraavos,
+        constructorCalldata: BraavosProxyConstructorCallData,
+        signature: signatureBraavos,
+    }
+    return await new TxConfirmation(
+        txPayload,BraavosProxyAddress,privateKeyBraavos,'braavos'
+    ).execute()
+}
+
+export const precision = async (number, dec) => {
+    let numStr = number.toString();
+    if (numStr.includes('e')) {
+        numStr = Number(number).toFixed(dec + 1);
+    }
+    const [whole, fraction = ''] = numStr.split('.');
+    const truncatedFraction = (fraction + '00000000').slice(0, dec);
+    return parseFloat(whole + '.' + truncatedFraction);
+};
+
+
+export const performWitdrawBraavos = async (address, privateKey, provider) => {
+    const balance = await checkBalance(address);
+    let estimatedMaxFee = await estimateAccountDeployFee(privateKey, provider);
+    if (balance < estimatedMaxFee) {
+        let fee = Number(estimatedMaxFee);
+        fee = fee / 10 ** 18;
+        let randomNumber = Math.random() * (1.3 - 1.1) + 1.1;
+        randomNumber = await precision(randomNumber, 2);
+        fee = fee * randomNumber;
+        fee = await precision(fee, 6);
+        await FromOkxToWallet(address, fee);
+    }
 };

@@ -1,19 +1,26 @@
 {
   "name": "generate-starknet-wallets",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "Generate a lot of wallets for starknet farm",
   "main": "index.js",
   "type": "module",
-  "dependencies": {
-    "ccxt": "^4.0.39",
-    "debug": "^4.3.4",
-    "ethers": "^5.5.1",
-    "lodash": "^4.17.21",
-    "starknet": "^4.22.0"
-  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "data": "node -e \"import('./utils/getWalletData.js').then(module => module.default(process.argv[1]))\"",
+    "generate": "node -e \"import('./utils/GenerateWallets.js').then(module => module.default(process.argv[1], process.argv[2], process.argv[3]))\"",
+    "deploy": "node -e \"import('./utils/deployWallet.js').then(module => module.default())\""
   },
   "keywords": [],
   "author": "retrodrop.tools",
-  "description": ""
+  "license": "MIT",
+  "dependencies": {
+    "@scure/bip32": "^1.3.2",
+    "@scure/bip39": "^1.2.1",
+    "ccxt": "^4.0.78",
+    "csv-parser": "^3.0.0",
+    "debug": "^4.3.4",
+    "ethers": "^6.7.1",
+    "fs-extra": "^11.1.1",
+    "starknet": "^5.19.3",
+    "web3": "^4.0.3"
+  }
 }

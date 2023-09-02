@@ -1,9 +1,9 @@
 // MnemonicGenerator.js
-import { ethers } from "ethers";
+import { generateMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
 
 export class MnemonicGenerator {
-    static generateMnemonicPhrase() {
-        const wallet = ethers.Wallet.createRandom();
-        return wallet.mnemonic.phrase;
+    static async generateMnemonicPhrase() {
+        return generateMnemonic(wordlist, 128);
     }
 }

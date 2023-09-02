@@ -1,135 +1,74 @@
-// OkxWithdraw.js
-import { OKXAuth, OKXWithdrawOptions } from '../config.js';
-import { checkBalance, sleep } from "./helpers.js";
-import { abi, ethcontract, rpc } from "./constants.js";
 import ccxt from "ccxt";
+import {General, OKXAuth} from '../config.js';
+import { checkBalance, setupDelay, waitForUpdateBalance } from './helpers.js';
 
-class ErrorHandler {
-    static handleCcxtError(e) {
-        const errorType = e.constructor.name;
-        console.error(`An error occurred ${errorType}.`);
-        console.error(`Error details ${e}.`);
-    }
-}
+export const FromOkxToWallet = async (address, amount) => {
 
-class ExchangeFactory {
-    static create() {
-        const exchange_options = {
-            'apiKey': OKXAuth.okx_apiKey,
-            'secret': OKXAuth.okx_apiSecret,
-            'password': OKXAuth.okx_apiPassword,
-            'enableRateLimit': true,
-        };
+    let attempts = General.attempts
+    while (attempts > 0) {
+        try {
+            const handleCcxtError = (e) => {
+                const errorType = e.constructor.name;
+                console.error(`An error occurred ${errorType}.`);
+                console.error(`Error details ${e}.`);
+            }
 
-        const exchange = new ccxt.okx(exchange_options);
+            const exchange_options = {
+                'apiKey': OKXAuth.okx_apiKey,
+                'secret': OKXAuth.okx_apiSecret,
+                'password': OKXAuth.okx_apiPassword,
+                'enableRateLimit': true,
+            };
 
-        if (OKXAuth.use_okx_proxy) {
+            const exchange = new ccxt.okx(exchange_options);
+
             exchange.https_proxy = OKXAuth.okx_proxy
-        }
 
-        return exchange;
-    }
-}
+            const info = await exchange.fetchCurrencies('ETH');
+            let minWd = info.ETH.networks.StarkNet.info.minWd;
+            minWd = parseFloat(minWd) * 2;
 
-class BalanceUpdater {
-    static async updateBalance(address) {
-        const balance_cache = 0;
-        let balance;
-        while (true) {
+            if (amount < minWd) {
+                amount = minWd;
+            }
+
+            let withdrawFee;
             try {
-                balance = await checkBalance(rpc, address, ethcontract, abi)
+                const fees = await exchange.fetchDepositWithdrawFees(['ETH']);
+                const feeInfo = fees.ETH.networks.StarkNet;
+                if (feeInfo) {
+                    withdrawFee = feeInfo.withdraw.fee;
+
+                } else {
+                    withdrawFee = Math.random() * (0.0002 - 0.0001) + 0.0002;
+                }
             } catch (error) {
-                await sleep(20);
-                continue;
-            }
-            await sleep(20);
-            if (balance > balance_cache) {
-                console.log(`Deposit to ${address} successfully confirmed`)
-                break
-            }
-        }
-    }
-}
-
-export class FeeGetter {
-    constructor(exchange, withdrawOptions) {
-        this.exchange = exchange;
-        this.withdrawOptions = withdrawOptions;
-    }
-
-    async getWithdrawFee() {
-        try {
-            const networkInfo = await this.exchange.fetchCurrencies();
-            const canWd = networkInfo[this.withdrawOptions.symbolWithdraw].networks[this.withdrawOptions.network].info.canWd;
-
-            if (!canWd) {
-                console.log(`Withdraw from OKX in ${this.withdrawOptions.network} network is disabled now`)
-                process.exit(0);
+                handleCcxtError(error);
+                withdrawFee = Math.random() * (0.0002 - 0.0001) + 0.0002;
             }
 
-            const fees = await this.exchange.fetchDepositWithdrawFees([this.withdrawOptions.symbolWithdraw]);
-            const feeInfo = fees[this.withdrawOptions.symbolWithdraw]?.networks?.[this.withdrawOptions.network];
-
-            if (feeInfo) {
-                return feeInfo.withdraw.fee;
-            } else {
-                console.error(`Failed to get withdrawal fees for ${this.withdrawOptions.symbolWithdraw} in ${this.withdrawOptions.network} network.`);
-                const withdrawFee = Math.random() * (OKXWithdrawOptions.withdraw_fee[1] - OKXWithdrawOptions.withdraw_fee[0]) + OKXWithdrawOptions.withdraw_fee[0];
-                console.error(`Using default withdrawal fees - ${withdrawFee.toFixed(4)} ${this.withdrawOptions.symbolWithdraw} in ${this.withdrawOptions.network} network.`);
-                return withdrawFee;
-            }
-        } catch (error) {
-            console.error("An error to get withdrawal fees:");
-            ErrorHandler.handleCcxtError(error);
-        }
-    }
-}
-
-class OkxWithdraw {
-    constructor(exchange, withdrawOptions, privateKey) {
-        this.exchange = exchange;
-        this.withdrawOptions = withdrawOptions;
-        this.amount = (Math.random() * (OKXWithdrawOptions.amount[1] - OKXWithdrawOptions.amount[0]) + OKXWithdrawOptions.amount[0]).toFixed(5);
-        this.privateKey = privateKey;
-    }
-
-    async execute(address) {
-        try {
-            const chainName = this.withdrawOptions.symbolWithdraw + '-' + this.withdrawOptions.network;
-            const feeGetter = new FeeGetter(this.exchange, this.withdrawOptions);
-            const withdrawFee = await feeGetter.getWithdrawFee();
-            this.amount = (parseFloat(this.amount) + withdrawFee).toFixed(5);
-
-            console.log(`[OKX] Withdrawing ${this.amount} ${this.withdrawOptions.symbolWithdraw} to ${address} in ${chainName} network`);
-            await this.exchange.withdraw(this.withdrawOptions.symbolWithdraw, this.amount, address, {
+            console.log(`Start withdrawal ${amount} ETH to StarkNet on ${address}`)
+            const chainName = 'ETH' + 'StarkNet';
+            let balanceCache = await checkBalance(address)
+            await exchange.withdraw('ETH', amount, address, {
                 toAddress: address,
                 chainName: chainName,
                 dest: 4,
                 fee: withdrawFee,
                 pwd: '-',
-                amt: this.amount,
-                network: this.withdrawOptions.network
+                amt: amount,
+                network: 'StarkNet'
             });
-            console.log(`[OKX] Withdrew out ${this.amount} ${this.withdrawOptions.symbolWithdraw} to ${address}`);
-            console.log(`[OKX] Start waiting for deposit.`)
-            await BalanceUpdater.updateBalance(address);
 
-        } catch (error) {
-            ErrorHandler.handleCcxtError(error);
+            console.log(`Start waiting for deposit 120 seconds....`)
+            await waitForUpdateBalance(address, balanceCache);
+            await setupDelay(General.delay);
+            break;
+
+        } catch (e) {
+            attempts--;
+            if (attempts === 0) { break }
+            console.error(e);
         }
-    }
-}
-
-export class AppInitializer {
-    constructor(withdrawOptionsClass, symbolWithdraw, network, address) {
-        this.withdrawOptions = new withdrawOptionsClass();
-        this.withdrawOptions.symbolWithdraw = symbolWithdraw;
-        this.withdrawOptions.network = network;
-        this.exchange = ExchangeFactory.create();
-        this.address = address;
-    }
-
-    async run() {
-        await new OkxWithdraw(this.exchange, this.withdrawOptions).execute(this.address);
     }
 }
