@@ -1,6 +1,6 @@
 import { HDKey } from '@scure/bip32';
 import { mnemonicToSeedSync } from '@scure/bip39';
-import { HDNodeWallet, Mnemonic } from 'ethers';
+import { HDNodeWallet, Wallet } from 'ethers';
 import { Account, CallData, constants, Contract, ec, hash, num, Provider, stark } from 'starknet';
 import { abi } from './abi.js';
 import {
@@ -14,13 +14,23 @@ import {
 import { FromOkxToWallet } from './OkxWithdraw.js';
 import TxConfirmation from "./txConfirmation.js";
 
+
 export const getArgentPrivateKey = async (mnemonic) => {
-    const mnemo = Mnemonic.fromPhrase(mnemonic);
-    const signer = HDNodeWallet.fromMnemonic(mnemo);
-    const masterNode = HDNodeWallet.fromSeed(signer.privateKey);
+    const signer = (Wallet.fromPhrase(mnemonic)).privateKey;
+    const masterNode = HDNodeWallet.fromSeed(
+        toHexString(signer));
     const childNode = masterNode.derivePath(baseDerivationPath);
 
     return '0x' + ec.starkCurve.grindKey(childNode.privateKey).toString();
+};
+
+
+const toHexString = (value) => {
+    let hex = BigInt(value).toString(16);
+    if (hex.length % 2 !== 0) {
+        hex = '0' + hex;
+    }
+    return '0x' + hex;
 };
 
 
@@ -91,7 +101,6 @@ export const getBraavosAddress = async (privateKey) => {
 };
 
 
-
 export const getAddress = async (privateKey,walletName) => {
     switch (walletName) {
         case "argent":
@@ -102,6 +111,7 @@ export const getAddress = async (privateKey,walletName) => {
     }
 }
 
+
 export const getPrivateKey = async (mnemonic,walletName) => {
     switch (walletName) {
         case "argent":
@@ -110,6 +120,7 @@ export const getPrivateKey = async (mnemonic,walletName) => {
             return await getBraavosPrivateKey(mnemonic);
     }
 }
+
 
 export const checkDeploy = async (addres,privateKey) => {
     try {
@@ -303,6 +314,7 @@ export async function estimateAccountDeployFee(
     return stark.estimatedFeeToMaxFee(response.overall_fee);
 }
 
+
 export async function deployBraavosAccount(
     privateKeyBraavos,
     provider,
@@ -336,6 +348,7 @@ export async function deployBraavosAccount(
         txPayload,BraavosProxyAddress,privateKeyBraavos,'braavos'
     ).execute()
 }
+
 
 export const precision = async (number, dec) => {
     let numStr = number.toString();
