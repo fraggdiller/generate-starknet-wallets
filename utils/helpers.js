@@ -1,7 +1,7 @@
 import { HDKey } from '@scure/bip32';
 import { mnemonicToSeedSync } from '@scure/bip39';
 import { HDNodeWallet, Wallet } from 'ethers';
-import { Account, CallData, constants, Contract, ec, hash, num, Provider, stark } from 'starknet';
+import { Account, CallData, constants, Contract, ec, hash, num, Provider, stark, RpcProvider } from 'starknet';
 import { abi } from './abi.js';
 import {
     argentXaccountClassHash,
@@ -140,18 +140,28 @@ export const checkDeploy = async (addres,privateKey) => {
 
 
 export const checkBalance = async (address) => {
-    try {
-        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+    let provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+    const contractAddress = '0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
+    const contract = new Contract(abi, contractAddress, provider);
+    let balance;
+    let attempts = 0;
 
-        const contract = new Contract(abi, '0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', provider);
-
-        const balance = await contract.functions.balanceOf(address);
-
-        return balance.balance.low;
-    } catch (e) {
-        console.log(e);
-        throw new Error(e);
+    while (attempts < 3) {
+        try {
+            balance = await contract.functions.balanceOf(address);
+            break;
+        } catch (error) {
+            attempts++;
+            provider = new RpcProvider({ nodeUrl: 'https://starknet-mainnet.public.blastapi.io' });
+            await new Promise(resolve => setTimeout(resolve, 15 * 1000));
+        }
     }
+
+    if (!balance) {
+        throw new Error("Failed to fetch the balance after multiple attempts.");
+    }
+
+    return balance.balance.low;
 };
 
 
