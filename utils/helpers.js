@@ -4,7 +4,7 @@ import { HDNodeWallet, Wallet } from 'ethers';
 import { Account, CallData, constants, Contract, ec, hash, num, Provider, stark, RpcProvider } from 'starknet';
 import { abi } from './abi.js';
 import {
-    argentXaccountClassHash,
+    argentXaccountClassHash, argentXaccountClassHashNew,
     argentXproxyClassHash,
     baseDerivationPath,
     braavosAccountClassHash,
@@ -13,6 +13,7 @@ import {
 } from './constants.js';
 import { FromOkxToWallet } from './OkxWithdraw.js';
 import TxConfirmation from "./txConfirmation.js";
+import {General} from "../config.js";
 
 
 export const getArgentPrivateKey = async (mnemonic) => {
@@ -43,13 +44,33 @@ export const build_ConstructorCallData = async (publicKey) => {
 };
 
 
-export const build_deployAccountPayload = async (ConstructorCallData, address, publicKey) => {
+export const build_ConstructorCallDataNew = async (publicKey) => {
+    return CallData.compile({
+        owner: publicKey,
+        guardian: 0n
+    });
+};
+
+
+export const build_deployAccountPayload = async (ConstructorCallDataNew, publicKey) => {
     return {
-        classHash: argentXproxyClassHash,
-        constructorCalldata: ConstructorCallData,
-        contractAddress: address,
+        classHash: argentXaccountClassHashNew,
+        constructorCalldata: ConstructorCallDataNew,
         addressSalt: publicKey
     }
+};
+
+
+export const getArgentAddressNew = async (privateKey) => {
+    const publicKey = ec.starkCurve.getStarkKey(privateKey);
+    const constructorCalldata = await build_ConstructorCallDataNew(publicKey);
+
+    return hash.calculateContractAddressFromHash(
+        publicKey,
+        argentXaccountClassHashNew,
+        constructorCalldata,
+        0
+    );
 };
 
 
@@ -63,7 +84,7 @@ export const getArgentAddress = async (privateKey) => {
         ConstructorCallData,
         0
     );
-};
+}
 
 
 export const getBraavosPrivateKey = async (mnemonic) => {
@@ -104,7 +125,11 @@ export const getBraavosAddress = async (privateKey) => {
 export const getAddress = async (privateKey,walletName) => {
     switch (walletName) {
         case "argent":
-            return await getArgentAddress(privateKey);
+            if (General.cairo) {
+                return await getArgentAddressNew(privateKey);
+            } else {
+                return await getArgentAddress(privateKey);
+            }
         case 'braavos':
             return await getBraavosAddress(privateKey);
 

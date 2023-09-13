@@ -33,7 +33,7 @@ export default class TxConfirmation {
 
                 if (this.walletName === 'argent') {
                     try{
-                        executeHash = await account.deployAccount(this.txPayload);
+                        executeHash = await account.deploySelf(this.txPayload);
                     }catch (e) {
                         console.log(e)
                     }

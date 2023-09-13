@@ -6,12 +6,12 @@ import csv from 'csv-parser';
 import fs from 'fs-extra';
 
 import {
-    build_ConstructorCallData,
+    build_ConstructorCallData, build_ConstructorCallDataNew,
     build_deployAccountPayload,
     checkBalance,
     checkDeploy,
     deployBraavosAccount,
-    getArgentAddress,
+    getArgentAddress, getArgentAddressNew,
     performWitdrawBraavos,
     precision
 } from './helpers.js';
@@ -104,11 +104,11 @@ export default async function deployAccount() {
 
 
 const DeployArgent = async (privateKey) => {
-    const address = await getArgentAddress(privateKey);
-    const account = new Account(provider, address, privateKey);
+    const address = await getArgentAddressNew(privateKey);
+    const account = new Account(provider, address, privateKey, '1');
     const publicKey = ec.starkCurve.getStarkKey(privateKey);
-    const ConstructorCallData = await build_ConstructorCallData(publicKey);
-    const txPayload = await build_deployAccountPayload(ConstructorCallData, address, publicKey);
+    const ConstructorCallData = await build_ConstructorCallDataNew(publicKey);
+    const txPayload = await build_deployAccountPayload(ConstructorCallData, publicKey);
 
     const balance = await checkBalance(address);
     let estimatedFee = (await account.estimateAccountDeployFee(txPayload, { skipValidate: false })).suggestedMaxFee;
