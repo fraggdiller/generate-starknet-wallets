@@ -405,7 +405,24 @@ export const performWitdrawBraavos = async (address, privateKey, provider) => {
         let randomNumber = Math.random() * (1.3 - 1.1) + 1.1;
         randomNumber = await precision(randomNumber, 2);
         fee = fee * randomNumber;
+
+        if(General.depositImmediately){
+            fee = parseFloat(fee) + parseFloat(generateRandom(General.depositMin, General.depositMax, General.depositRandomStep))
+        }
+
         fee = await precision(fee, 6);
         await FromOkxToWallet(address, fee);
     }
 };
+
+export function generateRandom(min, max, step) {
+    const [whole, fraction = ''] = step.toString().split('.');
+
+    // find diff
+    let difference = (max - min).toFixed(fraction.length);
+
+    let availableSteps = Math.floor(difference / step);
+    let randomValue = Math.floor(Math.random() * availableSteps);
+
+    return  parseFloat(min + step * randomValue).toFixed(fraction.length);
+}

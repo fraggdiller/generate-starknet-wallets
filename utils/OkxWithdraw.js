@@ -22,10 +22,12 @@ export const FromOkxToWallet = async (address, amount) => {
 
             const exchange = new ccxt.okx(exchange_options);
 
-            exchange.https_proxy = OKXAuth.okx_proxy
+            if(OKXAuth.okx_proxy){
+                exchange.https_proxy = OKXAuth.okx_proxy
+            }
 
             const info = await exchange.fetchCurrencies('ETH');
-            let minWd = info.ETH.networks.StarkNet.info.minWd;
+            let minWd = info.ETH.networks.Starknet.info.minWd;
             minWd = parseFloat(minWd) * 2;
 
             if (amount < minWd) {
@@ -35,10 +37,9 @@ export const FromOkxToWallet = async (address, amount) => {
             let withdrawFee;
             try {
                 const fees = await exchange.fetchDepositWithdrawFees(['ETH']);
-                const feeInfo = fees.ETH.networks.StarkNet;
+                const feeInfo = fees.ETH.networks.Starknet;
                 if (feeInfo) {
                     withdrawFee = feeInfo.withdraw.fee;
-
                 } else {
                     withdrawFee = Math.random() * (0.0002 - 0.0001) + 0.0002;
                 }
@@ -57,7 +58,7 @@ export const FromOkxToWallet = async (address, amount) => {
                 fee: withdrawFee,
                 pwd: '-',
                 amt: amount,
-                network: 'StarkNet'
+                network: 'Starknet'
             });
 
             console.log(`Start waiting for deposit 120 seconds....`)

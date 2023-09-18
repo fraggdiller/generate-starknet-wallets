@@ -74,6 +74,7 @@ To deploy wallets only from wallets.csv you should delete everything except `Wal
 ### Features
 - Before deploy it check is wallet generated or not
 - Before deploy it check wallet balance and if it's zero it will withdraw a little more than necessary for deploy
+- It is possible to immediately top up your account with a selected amount in the range
 
 ## Conclusion
 ```

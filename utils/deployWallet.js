@@ -10,7 +10,7 @@ import {
     build_deployAccountPayload,
     checkBalance,
     checkDeploy,
-    deployBraavosAccount,
+    deployBraavosAccount, generateRandom,
     getArgentAddress, getArgentAddressNew,
     performWitdrawBraavos,
     precision
@@ -122,7 +122,13 @@ const DeployArgent = async (privateKey) => {
         let randomNumber = Math.random() * (1.3 - 1.1) + 1.1;
         randomNumber = await precision(randomNumber, 2);
         fee = fee * randomNumber;
+
+        if(General.depositImmediately){
+            fee = fee + generateRandom(General.depositMin, General.depositMax, General.depositRandomStep)
+        }
+
         fee = await precision(fee, 6);
+
         await FromOkxToWallet(address, fee);
     }
 
