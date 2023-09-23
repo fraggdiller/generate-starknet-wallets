@@ -124,7 +124,7 @@ const DeployArgent = async (privateKey) => {
         fee = fee * randomNumber;
 
         if(General.depositImmediately){
-            fee = fee + generateRandom(General.depositMin, General.depositMax, General.depositRandomStep)
+            fee = parseFloat(fee) + parseFloat(generateRandom(General.depositMin, General.depositMax, General.depositRandomStep))
         }
 
         fee = await precision(fee, 6);
