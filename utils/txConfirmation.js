@@ -7,7 +7,9 @@ export default class TxConfirmation {
     constructor (txPayload,address, privateKey, walletName) {
         this.txPayload = txPayload;
         this.address = address;
-        this.provider =  new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+        this.provider =  new Provider({
+            sequencer: { network: constants.NetworkName.SN_MAIN },
+            rpc: {nodeUrl: General.nodeUrl }});
         this.privateKey = privateKey;
         this.walletName = walletName;
 
@@ -57,6 +59,8 @@ export default class TxConfirmation {
                     }
                 }
 
+                await setupDelay([100, 100]);
+
                 console.log(`Send TX: https://starkscan.co/tx/${executeHash.transaction_hash}`);
                 console.log(`Waiting for tx status...`);
                 let res; let flag;
@@ -64,7 +68,7 @@ export default class TxConfirmation {
                 while (true) {
                     try {
                         res = await this.provider.getTransactionReceipt(executeHash.transaction_hash);
-                        if (res.status === 'ACCEPTED_ON_L2' && res.finality_status === 'ACCEPTED_ON_L2' && res.execution_status === 'SUCCEEDED') {
+                        if (res.status === 'ACCEPTED_ON_L2' || res.finality_status === 'ACCEPTED_ON_L2' || res.execution_status === 'SUCCEEDED') {
                            flag = 1;
                             break;
                         } else if (res.status === 'REJECTED' || res.execution_status === 'REJECTED') {

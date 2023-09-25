@@ -149,7 +149,8 @@ export const getPrivateKey = async (mnemonic,walletName) => {
 
 export const checkDeploy = async (addres,privateKey) => {
     try {
-        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } })
+        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN },
+            rpc: {nodeUrl: General.nodeUrl }} )
         const account = new Account(provider,addres,privateKey)
         const nonce = await account.getNonce();
 
@@ -165,7 +166,8 @@ export const checkDeploy = async (addres,privateKey) => {
 
 
 export const checkBalance = async (address) => {
-    let provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+    let provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN },
+        rpc: {nodeUrl: General.nodeUrl } });
     const contractAddress = '0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
     const contract = new Contract(abi, contractAddress, provider);
     let balance;
@@ -177,7 +179,7 @@ export const checkBalance = async (address) => {
             break;
         } catch (error) {
             attempts++;
-            provider = new RpcProvider({ nodeUrl: 'https://starknet-mainnet.public.blastapi.io' });
+            provider = new RpcProvider({ nodeUrl: General.nodeUrl });
             await new Promise(resolve => setTimeout(resolve, 15 * 1000));
         }
     }

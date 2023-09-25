@@ -17,7 +17,10 @@ import {
 } from './helpers.js';
 
 
-const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+const provider = new Provider({
+    sequencer: { network: constants.NetworkName.SN_MAIN },
+    rpc: {nodeUrl: General.nodeUrl }}
+);
 
 
 export default async function deployAccount() {

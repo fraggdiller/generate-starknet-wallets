@@ -6,6 +6,7 @@ export class General {
     static depositMin = 0.0015; // min deposit wallet amount
     static depositMax = 0.003; // max deposit wallet amount
     static depositRandomStep = 0.00002; // randomizer step
+    static nodeUrl = '';
 }
 
 
