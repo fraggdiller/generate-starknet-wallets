@@ -7,12 +7,6 @@ import {checkBalance} from './helpers.js';
 import { ethers } from 'ethers';
 
 
-const provider = new Provider({
-    sequencer: { network: constants.NetworkName.SN_MAIN },
-    rpc: {nodeUrl: General.nodeUrl }}
-);
-
-
 export default async function getAccountBalances() {
     const rows = await new Promise((resolve, reject) => {
         const rows = [];
@@ -30,6 +24,9 @@ export default async function getAccountBalances() {
     for (const row of rows) {
         const { Address: address, PrivateKey: privateKey } = row;
 
+        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN },
+            rpc: {nodeUrl: General.nodeUrl }} )
+
         const account = new Account(provider, address, privateKey)
 
         const nonce = await account.getNonce();
@@ -39,7 +36,9 @@ export default async function getAccountBalances() {
         result.push({balance: balance, nonce: Number(nonce), address: address})
     }
 
-    result.sort((a,b) => (a.balance > b.balance) ? 1 : ((b.balance > a.balance) ? -1 : 0))
+    if(General.getBalanceSort){
+        result.sort((a,b) => (a.balance > b.balance) ? 1 : ((b.balance > a.balance) ? -1 : 0))
+    }
 
     result.forEach((element) => console.log(ethers.formatEther(element.balance)  + '   '  + element.nonce + '   ' + element.address));
 }
