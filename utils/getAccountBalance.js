@@ -32,13 +32,17 @@ export default async function getAccountBalances() {
         const nonce = await account.getNonce();
 
         const balance = await checkBalance(address);
-
-        result.push({balance: balance, nonce: Number(nonce), address: address})
+        if(General.getBalanceSort) {
+            result.push({balance: balance, nonce: Number(nonce), address: address})
+        } else {
+            console.log(ethers.formatEther(balance)  + '   '  + Number(nonce) + '   ' + address)
+        }
     }
 
     if(General.getBalanceSort){
         result.sort((a,b) => (a.balance > b.balance) ? 1 : ((b.balance > a.balance) ? -1 : 0))
+
+        result.forEach((element) => console.log(ethers.formatEther(element.balance)  + '   '  + element.nonce + '   ' + element.address));
     }
 
-    result.forEach((element) => console.log(ethers.formatEther(element.balance)  + '   '  + element.nonce + '   ' + element.address));
 }
