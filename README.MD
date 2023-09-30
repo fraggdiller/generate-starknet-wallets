@@ -86,6 +86,8 @@ npm run generate -- argent 30 new
 open Mnemonics.txt
 npm run data -- argent
 npm run deploy
+
+npm run getBalance
 ```
 
 ### Support / Qs
