@@ -88,6 +88,8 @@ npm run data -- argent
 npm run deploy
 
 npm run getBalance
+
+npm run generateEth 20
 ```
 
 ### Support / Qs

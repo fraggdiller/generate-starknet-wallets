@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "data": "node -e \"import('./utils/getWalletData.js').then(module => module.default(process.argv[1]))\"",
+    "generateEth": "node -e \"import('./utils/GenerateEthWallets.js').then(module => module.default(process.argv[1]))\"",
     "generate": "node -e \"import('./utils/GenerateWallets.js').then(module => module.default(process.argv[1], process.argv[2], process.argv[3]))\"",
     "deploy": "node -e \"import('./utils/deployWallet.js').then(module => module.default())\"",
     "getBalance": "node -e \"import('./utils/getAccountBalance.js').then(module => module.default())\""
