@@ -7,7 +7,9 @@ export default class TxConfirmation {
     constructor (txPayload,address, privateKey, walletName) {
         this.txPayload = txPayload;
         this.address = address;
-        this.provider =  new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+        this.provider =  new Provider({
+            sequencer: { network: constants.NetworkName.SN_MAIN },
+            rpc: {nodeUrl: General.nodeUrl }});
         this.privateKey = privateKey;
         this.walletName = walletName;
 
@@ -23,7 +25,7 @@ export default class TxConfirmation {
                 let nonceCash;
                 let nonce;
                 try {
-                    nonceCash = await account.getNonce();
+                    nonceCash = await account.getNonce("pending");
                     nonceCash = parseInt(nonceCash, 16);
                 } catch (e) {
                     nonceCash = 0;
@@ -60,17 +62,18 @@ export default class TxConfirmation {
                 console.log(`Send TX: https://starkscan.co/tx/${executeHash.transaction_hash}`);
                 console.log(`Waiting for tx status...`);
                 let res; let flag;
+                await setupDelay([100, 120]);
 
                 while (true) {
                     try {
                         res = await this.provider.getTransactionReceipt(executeHash.transaction_hash);
-                        if (res.status === 'ACCEPTED_ON_L2' && res.finality_status === 'ACCEPTED_ON_L2' && res.execution_status === 'SUCCEEDED') {
+                        if (res.status === 'ACCEPTED_ON_L2' || res.finality_status === 'ACCEPTED_ON_L2' || res.execution_status === 'SUCCEEDED') {
                            flag = 1;
                             break;
-                        } else if (res.status === 'REJECTED' || res.execution_status === 'REJECTED') {
+                        } else if (res.finality_status === 'REJECTED' || res.execution_status === 'REJECTED') {
                             flag = 0;
                             break;
-                        } else if (res.status === 'REVERTED' || res.execution_status === 'REVERTED') {
+                        } else if (res.finality_status === 'REVERTED' || res.execution_status === 'REVERTED') {
                             flag = -1
                             break;
                         }
@@ -80,11 +83,11 @@ export default class TxConfirmation {
                         throw new Error(`An error occurred while getting txn status.`)
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 2 * 1000));
+                    await new Promise(resolve => setTimeout(resolve, 10 * 1000));
                 }
 
                 if (flag === 1) {
-                    nonce = await account.getNonce();
+                    nonce = await account.getNonce("pending");
                     nonce = parseInt(nonce, 16);
 
                     if (nonce === nonceCash) {
@@ -92,7 +95,7 @@ export default class TxConfirmation {
 
                         for (let i = 0; i < 90; i++) {
                             await new Promise(resolve => setTimeout(resolve, 2 * 1000));
-                            nonce = await account.getNonce();
+                            nonce = await account.getNonce("pending");
                             nonce = parseInt(nonce, 16);
                             if (nonce > nonceCash) {
                                 console.log(`\x1b[32m The transaction is fully confirmed in the blockchain | Nonce ${ nonce }\x1b[0m`);

@@ -10,14 +10,17 @@ import {
     build_deployAccountPayload,
     checkBalance,
     checkDeploy,
-    deployBraavosAccount,
+    deployBraavosAccount, generateRandom,
     getArgentAddress, getArgentAddressNew,
     performWitdrawBraavos,
     precision
 } from './helpers.js';
 
 
-const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+const provider = new Provider({
+    sequencer: { network: constants.NetworkName.SN_MAIN },
+    rpc: {nodeUrl: General.nodeUrl }}
+);
 
 
 export default async function deployAccount() {
@@ -122,7 +125,13 @@ const DeployArgent = async (privateKey) => {
         let randomNumber = Math.random() * (1.3 - 1.1) + 1.1;
         randomNumber = await precision(randomNumber, 2);
         fee = fee * randomNumber;
+
+        if(General.depositImmediately){
+            fee = parseFloat(fee) + parseFloat(generateRandom(General.depositMin, General.depositMax, General.depositRandomStep))
+        }
+
         fee = await precision(fee, 6);
+
         await FromOkxToWallet(address, fee);
     }
 

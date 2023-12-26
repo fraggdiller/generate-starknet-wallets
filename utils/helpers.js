@@ -149,7 +149,8 @@ export const getPrivateKey = async (mnemonic,walletName) => {
 
 export const checkDeploy = async (addres,privateKey) => {
     try {
-        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } })
+        const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN },
+            rpc: {nodeUrl: General.nodeUrl }} )
         const account = new Account(provider,addres,privateKey)
         const nonce = await account.getNonce();
 
@@ -165,7 +166,8 @@ export const checkDeploy = async (addres,privateKey) => {
 
 
 export const checkBalance = async (address) => {
-    let provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN } });
+    let provider = new Provider({ sequencer: { network: constants.NetworkName.SN_MAIN },
+        rpc: {nodeUrl: General.nodeUrl } });
     const contractAddress = '0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
     const contract = new Contract(abi, contractAddress, provider);
     let balance;
@@ -177,7 +179,7 @@ export const checkBalance = async (address) => {
             break;
         } catch (error) {
             attempts++;
-            provider = new RpcProvider({ nodeUrl: 'https://starknet-mainnet.public.blastapi.io' });
+            provider = new RpcProvider({ nodeUrl: General.nodeUrl });
             await new Promise(resolve => setTimeout(resolve, 15 * 1000));
         }
     }
@@ -405,7 +407,24 @@ export const performWitdrawBraavos = async (address, privateKey, provider) => {
         let randomNumber = Math.random() * (1.3 - 1.1) + 1.1;
         randomNumber = await precision(randomNumber, 2);
         fee = fee * randomNumber;
+
+        if(General.depositImmediately){
+            fee = parseFloat(fee) + parseFloat(generateRandom(General.depositMin, General.depositMax, General.depositRandomStep))
+        }
+
         fee = await precision(fee, 6);
         await FromOkxToWallet(address, fee);
     }
 };
+
+export function generateRandom(min, max, step) {
+    const [whole, fraction = ''] = step.toString().split('.');
+
+    // find diff
+    let difference = (max - min).toFixed(fraction.length);
+
+    let availableSteps = Math.floor(difference / step);
+    let randomValue = Math.floor(Math.random() * availableSteps);
+
+    return  parseFloat(min + step * randomValue).toFixed(fraction.length);
+}
